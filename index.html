@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>Practical-machine-learning by ajayrathi78</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">Practical-machine-learning</h1>
+      <h2 class="project-tagline"></h2>
+      <a href="https://github.com/ajayrathi78/Practical-Machine-Learning" class="btn">View on GitHub</a>
+      <a href="https://github.com/ajayrathi78/Practical-Machine-Learning/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/ajayrathi78/Practical-Machine-Learning/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <hr>
+
+<p>title: "Practical Machine Learning Project"
+author: "Ajay Rathi"
+date: "23 August 2015"</p>
+
+<h2>
+<a id="output-html_document" class="anchor" href="#output-html_document" aria-hidden="true"><span class="octicon octicon-link"></span></a>output: html_document</h2>
+
+<h2>
+<a id="synopsis" class="anchor" href="#synopsis" aria-hidden="true"><span class="octicon octicon-link"></span></a>SYNOPSIS</h2>
+
+<p>Source:</p>
+
+<p>Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.</p>
+
+<p>Goal of this project is to “predict the manner in which trainers did the exercise.”</p>
+
+<p>Further report should describe:</p>
+
+<p>“how you built your model”
+“how you used cross validation”
+“what you think the expected out of sample error is”
+“why you made the choices you did”
+Ultimately, the prediction model is to be run on the test data to predict the outcome of 20 different test cases.</p>
+
+<p>First, though, I'll load the appropriate packages and set the seed for reproduceable results.</p>
+
+<div class="highlight highlight-r"><pre>library(<span class="pl-smi">AppliedPredictiveModeling</span>)
+library(<span class="pl-smi">caret</span>)
+library(<span class="pl-smi">rattle</span>)
+library(<span class="pl-smi">rpart.plot</span>)
+library(<span class="pl-smi">randomForest</span>)</pre></div>
+
+<h2>
+<a id="question" class="anchor" href="#question" aria-hidden="true"><span class="octicon octicon-link"></span></a>QUESTION</h2>
+
+<p>In the aforementioned study, six participants participated in a dumbell lifting exercise five different ways. The five ways, as described in the study, were “exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes.”</p>
+
+<p>By processing data gathered from accelerometers on the belt, forearm, arm, and dumbell of the participants in a machine learning algorithm, the question is can the appropriate activity quality (class A-E) be predicted?</p>
+
+<h2>
+<a id="input-data" class="anchor" href="#input-data" aria-hidden="true"><span class="octicon octicon-link"></span></a>INPUT DATA</h2>
+
+<p>The first step is to import the data and to verify that the training data and the test data are identical.</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Download data.</span>
+<span class="pl-c">#url_raw_training &lt;- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"</span>
+<span class="pl-smi">file_dest_training</span> <span class="pl-k">&lt;-</span> <span class="pl-s"><span class="pl-pds">"</span>pml-training.csv<span class="pl-pds">"</span></span>
+<span class="pl-c">#download.file(url=url_raw_training, destfile=file_dest_training, method="curl")</span>
+<span class="pl-c">#url_raw_testing &lt;- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"</span>
+<span class="pl-smi">file_dest_testing</span> <span class="pl-k">&lt;-</span> <span class="pl-s"><span class="pl-pds">"</span>pml-testing.csv<span class="pl-pds">"</span></span>
+<span class="pl-c">#download.file(url=url_raw_testing, destfile=file_dest_testing, method="curl")</span>
+
+<span class="pl-c"># Import the data treating empty values as NA.</span>
+<span class="pl-smi">df_training</span> <span class="pl-k">&lt;-</span> read.csv(<span class="pl-smi">file_dest_training</span>, <span class="pl-v">na.strings</span><span class="pl-k">=</span>c(<span class="pl-s"><span class="pl-pds">"</span>NA<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span><span class="pl-pds">"</span></span>), <span class="pl-v">header</span><span class="pl-k">=</span><span class="pl-c1">TRUE</span>)
+<span class="pl-smi">colnames_train</span> <span class="pl-k">&lt;-</span> colnames(<span class="pl-smi">df_training</span>)
+<span class="pl-smi">df_testing</span> <span class="pl-k">&lt;-</span> read.csv(<span class="pl-smi">file_dest_testing</span>, <span class="pl-v">na.strings</span><span class="pl-k">=</span>c(<span class="pl-s"><span class="pl-pds">"</span>NA<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span><span class="pl-pds">"</span></span>), <span class="pl-v">header</span><span class="pl-k">=</span><span class="pl-c1">TRUE</span>)
+<span class="pl-smi">colnames_test</span> <span class="pl-k">&lt;-</span> colnames(<span class="pl-smi">df_testing</span>)
+
+<span class="pl-c"># Verify that the column names (excluding classe and problem_id) are identical in the training and test set.</span>
+all.equal(<span class="pl-smi">colnames_train</span>[<span class="pl-c1">1</span><span class="pl-k">:</span>length(<span class="pl-smi">colnames_train</span>)<span class="pl-k">-</span><span class="pl-c1">1</span>], <span class="pl-smi">colnames_test</span>[<span class="pl-c1">1</span><span class="pl-k">:</span>length(<span class="pl-smi">colnames_train</span>)<span class="pl-k">-</span><span class="pl-c1">1</span>])</pre></div>
+
+<h2>
+<a id="features" class="anchor" href="#features" aria-hidden="true"><span class="octicon octicon-link"></span></a>FEATURES</h2>
+
+<p>Having verified that the schema of both the training and testing sets are identical (excluding the final column representing the A-E class), I decided to eliminate both NA columns and other extraneous columns.</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Count the number of non-NAs in each col.</span>
+<span class="pl-en">nonNAs</span> <span class="pl-k">&lt;-</span> <span class="pl-k">function</span>(<span class="pl-smi">x</span>) {
+    as.vector(apply(<span class="pl-smi">x</span>, <span class="pl-c1">2</span>, <span class="pl-k">function</span>(<span class="pl-smi">x</span>) length(which(<span class="pl-k">!</span>is.na(<span class="pl-smi">x</span>)))))
+}
+
+<span class="pl-c"># Build vector of missing data or NA columns to drop.</span>
+<span class="pl-smi">colcnts</span> <span class="pl-k">&lt;-</span> nonNAs(<span class="pl-smi">df_training</span>)
+<span class="pl-smi">drops</span> <span class="pl-k">&lt;-</span> c()
+<span class="pl-k">for</span> (<span class="pl-smi">cnt</span> <span class="pl-k">in</span> <span class="pl-c1">1</span><span class="pl-k">:</span>length(<span class="pl-smi">colcnts</span>)) {
+    <span class="pl-k">if</span> (<span class="pl-smi">colcnts</span>[<span class="pl-smi">cnt</span>] <span class="pl-k">&lt;</span> nrow(<span class="pl-smi">df_training</span>)) {
+        <span class="pl-smi">drops</span> <span class="pl-k">&lt;-</span> c(<span class="pl-smi">drops</span>, <span class="pl-smi">colnames_train</span>[<span class="pl-smi">cnt</span>])
+    }
+}
+
+<span class="pl-c"># Drop NA data and the first 7 columns as they're unnecessary for predicting.</span>
+<span class="pl-smi">df_training</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_training</span>[,<span class="pl-k">!</span>(names(<span class="pl-smi">df_training</span>) <span class="pl-k">%in%</span> <span class="pl-smi">drops</span>)]
+<span class="pl-smi">df_training</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_training</span>[,<span class="pl-c1">8</span><span class="pl-k">:</span>length(colnames(<span class="pl-smi">df_training</span>))]
+
+<span class="pl-smi">df_testing</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_testing</span>[,<span class="pl-k">!</span>(names(<span class="pl-smi">df_testing</span>) <span class="pl-k">%in%</span> <span class="pl-smi">drops</span>)]
+<span class="pl-smi">df_testing</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_testing</span>[,<span class="pl-c1">8</span><span class="pl-k">:</span>length(colnames(<span class="pl-smi">df_testing</span>))]
+
+<span class="pl-c"># Show remaining columns.</span>
+colnames(<span class="pl-smi">df_training</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre>colnames(<span class="pl-smi">df_testing</span>)</pre></div>
+
+<p>First, check for covariates that have virtually no variablility.</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-smi">nsv</span> <span class="pl-k">&lt;-</span> nearZeroVar(<span class="pl-smi">df_training</span>, <span class="pl-v">saveMetrics</span><span class="pl-k">=</span><span class="pl-c1">TRUE</span>)
+<span class="pl-smi">nsv</span></pre></div>
+
+<p>Given that all of the near zero variance variables (nsv) are FALSE, there's no need to eliminate any covariates due to lack of variablility.</p>
+
+<h2>
+<a id="algorithm" class="anchor" href="#algorithm" aria-hidden="true"><span class="octicon octicon-link"></span></a>ALGORITHM</h2>
+
+<p>We were provided with a large training set (19,622 entries) and a small testing set (20 entries). Instead of performing the algorithm on the entire training set, as it would be time consuming and wouldn't allow for an attempt on a testing set, I chose to divide the given training set into four roughly equal sets, each of which was then split into a training set (comprising 60% of the entries) and a testing set (comprising 40% of the entries).</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Divide the given training set into 4 roughly equal sets.</span>
+set.seed(<span class="pl-c1">666</span>)
+<span class="pl-smi">ids_small</span> <span class="pl-k">&lt;-</span> createDataPartition(<span class="pl-v">y</span><span class="pl-k">=</span><span class="pl-smi">df_training</span><span class="pl-k">$</span><span class="pl-smi">classe</span>, <span class="pl-v">p</span><span class="pl-k">=</span><span class="pl-c1">0.25</span>, <span class="pl-v">list</span><span class="pl-k">=</span><span class="pl-c1">FALSE</span>)
+<span class="pl-smi">df_small1</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_training</span>[<span class="pl-smi">ids_small</span>,]
+<span class="pl-smi">df_remainder</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_training</span>[<span class="pl-k">-</span><span class="pl-smi">ids_small</span>,]
+set.seed(<span class="pl-c1">666</span>)
+<span class="pl-smi">ids_small</span> <span class="pl-k">&lt;-</span> createDataPartition(<span class="pl-v">y</span><span class="pl-k">=</span><span class="pl-smi">df_remainder</span><span class="pl-k">$</span><span class="pl-smi">classe</span>, <span class="pl-v">p</span><span class="pl-k">=</span><span class="pl-c1">0.33</span>, <span class="pl-v">list</span><span class="pl-k">=</span><span class="pl-c1">FALSE</span>)
+<span class="pl-smi">df_small2</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_remainder</span>[<span class="pl-smi">ids_small</span>,]
+<span class="pl-smi">df_remainder</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_remainder</span>[<span class="pl-k">-</span><span class="pl-smi">ids_small</span>,]
+set.seed(<span class="pl-c1">666</span>)
+<span class="pl-smi">ids_small</span> <span class="pl-k">&lt;-</span> createDataPartition(<span class="pl-v">y</span><span class="pl-k">=</span><span class="pl-smi">df_remainder</span><span class="pl-k">$</span><span class="pl-smi">classe</span>, <span class="pl-v">p</span><span class="pl-k">=</span><span class="pl-c1">0.5</span>, <span class="pl-v">list</span><span class="pl-k">=</span><span class="pl-c1">FALSE</span>)
+<span class="pl-smi">df_small3</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_remainder</span>[<span class="pl-smi">ids_small</span>,]
+<span class="pl-smi">df_small4</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_remainder</span>[<span class="pl-k">-</span><span class="pl-smi">ids_small</span>,]
+<span class="pl-c"># Divide each of these 4 sets into training (60%) and test (40%) sets.</span>
+set.seed(<span class="pl-c1">666</span>)
+<span class="pl-smi">inTrain</span> <span class="pl-k">&lt;-</span> createDataPartition(<span class="pl-v">y</span><span class="pl-k">=</span><span class="pl-smi">df_small1</span><span class="pl-k">$</span><span class="pl-smi">classe</span>, <span class="pl-v">p</span><span class="pl-k">=</span><span class="pl-c1">0.6</span>, <span class="pl-v">list</span><span class="pl-k">=</span><span class="pl-c1">FALSE</span>)
+<span class="pl-smi">df_small_training1</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_small1</span>[<span class="pl-smi">inTrain</span>,]
+<span class="pl-smi">df_small_testing1</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_small1</span>[<span class="pl-k">-</span><span class="pl-smi">inTrain</span>,]
+set.seed(<span class="pl-c1">666</span>)
+<span class="pl-smi">inTrain</span> <span class="pl-k">&lt;-</span> createDataPartition(<span class="pl-v">y</span><span class="pl-k">=</span><span class="pl-smi">df_small2</span><span class="pl-k">$</span><span class="pl-smi">classe</span>, <span class="pl-v">p</span><span class="pl-k">=</span><span class="pl-c1">0.6</span>, <span class="pl-v">list</span><span class="pl-k">=</span><span class="pl-c1">FALSE</span>)
+<span class="pl-smi">df_small_training2</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_small2</span>[<span class="pl-smi">inTrain</span>,]
+<span class="pl-smi">df_small_testing2</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_small2</span>[<span class="pl-k">-</span><span class="pl-smi">inTrain</span>,]
+set.seed(<span class="pl-c1">666</span>)
+<span class="pl-smi">inTrain</span> <span class="pl-k">&lt;-</span> createDataPartition(<span class="pl-v">y</span><span class="pl-k">=</span><span class="pl-smi">df_small3</span><span class="pl-k">$</span><span class="pl-smi">classe</span>, <span class="pl-v">p</span><span class="pl-k">=</span><span class="pl-c1">0.6</span>, <span class="pl-v">list</span><span class="pl-k">=</span><span class="pl-c1">FALSE</span>)
+<span class="pl-smi">df_small_training3</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_small3</span>[<span class="pl-smi">inTrain</span>,]
+<span class="pl-smi">df_small_testing3</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_small3</span>[<span class="pl-k">-</span><span class="pl-smi">inTrain</span>,]
+set.seed(<span class="pl-c1">666</span>)
+<span class="pl-smi">inTrain</span> <span class="pl-k">&lt;-</span> createDataPartition(<span class="pl-v">y</span><span class="pl-k">=</span><span class="pl-smi">df_small4</span><span class="pl-k">$</span><span class="pl-smi">classe</span>, <span class="pl-v">p</span><span class="pl-k">=</span><span class="pl-c1">0.6</span>, <span class="pl-v">list</span><span class="pl-k">=</span><span class="pl-c1">FALSE</span>)
+<span class="pl-smi">df_small_training4</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_small4</span>[<span class="pl-smi">inTrain</span>,]
+<span class="pl-smi">df_small_testing4</span> <span class="pl-k">&lt;-</span> <span class="pl-smi">df_small4</span>[<span class="pl-k">-</span><span class="pl-smi">inTrain</span>,]</pre></div>
+
+<h2>
+<a id="parameters" class="anchor" href="#parameters" aria-hidden="true"><span class="octicon octicon-link"></span></a>PARAMETERS</h2>
+
+<p>I decided to try classification trees “out of the box” and then introduce preprocessing and cross validation.</p>
+
+<p>While I also considered applying “out of the box” random forest models, some of the horror stories contributed to the coursera discussion forums regarding the lengthy processing times for random forest models convinced me to only attempt random forests with cross validation and, possibly, preprocessing.</p>
+
+<h2>
+<a id="evaluation" class="anchor" href="#evaluation" aria-hidden="true"><span class="octicon octicon-link"></span></a>EVALUATION</h2>
+
+<p>Classification Tree</p>
+
+<p>First, the “out of the box” classification tree:</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Train on training set 1 of 4 with no extra features.</span>
+set.seed(<span class="pl-c1">666</span>)
+<span class="pl-smi">modFit</span> <span class="pl-k">&lt;-</span> train(<span class="pl-smi">df_small_training1</span><span class="pl-k">$</span><span class="pl-smi">classe</span> <span class="pl-k">~</span> ., <span class="pl-v">data</span> <span class="pl-k">=</span> <span class="pl-smi">df_small_training1</span>, <span class="pl-v">method</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>rpart<span class="pl-pds">"</span></span>)
+print(<span class="pl-smi">modFit</span>, <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">3</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre>print(<span class="pl-smi">modFit</span><span class="pl-k">$</span><span class="pl-smi">finalModel</span>, <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">3</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre>fancyRpartPlot(<span class="pl-smi">modFit</span><span class="pl-k">$</span><span class="pl-smi">finalModel</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Run against testing set 1 of 4 with no extra features.</span>
+<span class="pl-smi">predictions</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-smi">modFit</span>, <span class="pl-v">newdata</span><span class="pl-k">=</span><span class="pl-smi">df_small_testing1</span>)
+print(confusionMatrix(<span class="pl-smi">predictions</span>, <span class="pl-smi">df_small_testing1</span><span class="pl-k">$</span><span class="pl-smi">classe</span>), <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">4</span>)</pre></div>
+
+<p>low accuracy rate (0.5584)</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Train on training set 1 of 4 with only preprocessing.</span>
+set.seed(<span class="pl-c1">666</span>)
+<span class="pl-smi">modFit</span> <span class="pl-k">&lt;-</span> train(<span class="pl-smi">df_small_training1</span><span class="pl-k">$</span><span class="pl-smi">classe</span> <span class="pl-k">~</span> .,  <span class="pl-v">preProcess</span><span class="pl-k">=</span>c(<span class="pl-s"><span class="pl-pds">"</span>center<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>scale<span class="pl-pds">"</span></span>), <span class="pl-v">data</span> <span class="pl-k">=</span> <span class="pl-smi">df_small_training1</span>, <span class="pl-v">method</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>rpart<span class="pl-pds">"</span></span>)
+print(<span class="pl-smi">modFit</span>, <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">3</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Train on training set 1 of 4 with only cross validation.</span>
+set.seed(<span class="pl-c1">666</span>)
+<span class="pl-smi">modFit</span> <span class="pl-k">&lt;-</span> train(<span class="pl-smi">df_small_training1</span><span class="pl-k">$</span><span class="pl-smi">classe</span> <span class="pl-k">~</span> .,  <span class="pl-v">trControl</span><span class="pl-k">=</span>trainControl(<span class="pl-v">method</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>cv<span class="pl-pds">"</span></span>, <span class="pl-v">number</span> <span class="pl-k">=</span> <span class="pl-c1">4</span>), <span class="pl-v">data</span> <span class="pl-k">=</span> <span class="pl-smi">df_small_training1</span>, <span class="pl-v">method</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>rpart<span class="pl-pds">"</span></span>)
+print(<span class="pl-smi">modFit</span>, <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">3</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Train on training set 1 of 4 with both preprocessing and cross validation.</span>
+set.seed(<span class="pl-c1">666</span>)
+<span class="pl-smi">modFit</span> <span class="pl-k">&lt;-</span> train(<span class="pl-smi">df_small_training1</span><span class="pl-k">$</span><span class="pl-smi">classe</span> <span class="pl-k">~</span> .,  <span class="pl-v">preProcess</span><span class="pl-k">=</span>c(<span class="pl-s"><span class="pl-pds">"</span>center<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>scale<span class="pl-pds">"</span></span>), <span class="pl-v">trControl</span><span class="pl-k">=</span>trainControl(<span class="pl-v">method</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>cv<span class="pl-pds">"</span></span>, <span class="pl-v">number</span> <span class="pl-k">=</span> <span class="pl-c1">4</span>), <span class="pl-v">data</span> <span class="pl-k">=</span> <span class="pl-smi">df_small_training1</span>, <span class="pl-v">method</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>rpart<span class="pl-pds">"</span></span>)
+print(<span class="pl-smi">modFit</span>, <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">3</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Run against testing set 1 of 4 with both preprocessing and cross validation.</span>
+<span class="pl-smi">predictions</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-smi">modFit</span>, <span class="pl-v">newdata</span><span class="pl-k">=</span><span class="pl-smi">df_small_testing1</span>)
+print(confusionMatrix(<span class="pl-smi">predictions</span>, <span class="pl-smi">df_small_testing1</span><span class="pl-k">$</span><span class="pl-smi">classe</span>), <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">4</span>)</pre></div>
+
+<p>The impact of incorporating both preprocessing and cross validation appeared to show some minimal improvement (accuracy rate rose from 0.531 to 0.552 against training sets). However, when run against the corresponding testing set, the accuracy rate was identical (0.5584) for both the “out of the box” and the preprocessing/cross validation methods.</p>
+
+<h2>
+<a id="random-forest" class="anchor" href="#random-forest" aria-hidden="true"><span class="octicon octicon-link"></span></a>Random Forest</h2>
+
+<p>First I decided to assess the impact/value of including preprocessing.</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Train on training set 1 of 4 with only cross validation.</span>
+set.seed(<span class="pl-c1">666</span>)
+<span class="pl-smi">modFit</span> <span class="pl-k">&lt;-</span> train(<span class="pl-smi">df_small_training1</span><span class="pl-k">$</span><span class="pl-smi">classe</span> <span class="pl-k">~</span> ., <span class="pl-v">method</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>rf<span class="pl-pds">"</span></span>, <span class="pl-v">trControl</span><span class="pl-k">=</span>trainControl(<span class="pl-v">method</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>cv<span class="pl-pds">"</span></span>, <span class="pl-v">number</span> <span class="pl-k">=</span> <span class="pl-c1">4</span>), <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-smi">df_small_training1</span>)
+print(<span class="pl-smi">modFit</span>, <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">3</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Run against testing set 1 of 4.</span>
+<span class="pl-smi">predictions</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-smi">modFit</span>, <span class="pl-v">newdata</span><span class="pl-k">=</span><span class="pl-smi">df_small_testing1</span>)
+print(confusionMatrix(<span class="pl-smi">predictions</span>, <span class="pl-smi">df_small_testing1</span><span class="pl-k">$</span><span class="pl-smi">classe</span>), <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">4</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Run against 20 testing set</span>
+print(predict(<span class="pl-smi">modFit</span>, <span class="pl-v">newdata</span><span class="pl-k">=</span><span class="pl-smi">df_testing</span>))</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Train on training set 1 of 4 with only both preprocessing and cross validation.</span>
+set.seed(<span class="pl-c1">666</span>)
+<span class="pl-smi">modFit</span> <span class="pl-k">&lt;-</span> train(<span class="pl-smi">df_small_training1</span><span class="pl-k">$</span><span class="pl-smi">classe</span> <span class="pl-k">~</span> ., <span class="pl-v">method</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>rf<span class="pl-pds">"</span></span>, <span class="pl-v">preProcess</span><span class="pl-k">=</span>c(<span class="pl-s"><span class="pl-pds">"</span>center<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>scale<span class="pl-pds">"</span></span>), <span class="pl-v">trControl</span><span class="pl-k">=</span>trainControl(<span class="pl-v">method</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>cv<span class="pl-pds">"</span></span>, <span class="pl-v">number</span> <span class="pl-k">=</span> <span class="pl-c1">4</span>), <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-smi">df_small_training1</span>)
+print(<span class="pl-smi">modFit</span>, <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">3</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Run against testing set 1 of 4.</span>
+<span class="pl-smi">predictions</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-smi">modFit</span>, <span class="pl-v">newdata</span><span class="pl-k">=</span><span class="pl-smi">df_small_testing1</span>)
+print(confusionMatrix(<span class="pl-smi">predictions</span>, <span class="pl-smi">df_small_testing1</span><span class="pl-k">$</span><span class="pl-smi">classe</span>), <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">4</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Run against 20 testing</span>
+print(predict(<span class="pl-smi">modFit</span>, <span class="pl-v">newdata</span><span class="pl-k">=</span><span class="pl-smi">df_testing</span>))</pre></div>
+
+<p>Preprocessing actually lowered the accuracy rate from 0.955 to 0.954 against the training set. However, when run against the corresponding set, the accuracy rate rose from 0.9689 to 0.9714 with the addition of preprocessing. Thus I decided to apply both preprocessing and cross validation to the remaining 3 data sets.</p>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Train on training set 2 of 4 with only cross validation.</span>
+set.seed(<span class="pl-c1">666</span>)
+<span class="pl-smi">modFit</span> <span class="pl-k">&lt;-</span> train(<span class="pl-smi">df_small_training2</span><span class="pl-k">$</span><span class="pl-smi">classe</span> <span class="pl-k">~</span> ., <span class="pl-v">method</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>rf<span class="pl-pds">"</span></span>, <span class="pl-v">preProcess</span><span class="pl-k">=</span>c(<span class="pl-s"><span class="pl-pds">"</span>center<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>scale<span class="pl-pds">"</span></span>), <span class="pl-v">trControl</span><span class="pl-k">=</span>trainControl(<span class="pl-v">method</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>cv<span class="pl-pds">"</span></span>, <span class="pl-v">number</span> <span class="pl-k">=</span> <span class="pl-c1">4</span>), <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-smi">df_small_training2</span>)
+print(<span class="pl-smi">modFit</span>, <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">3</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Run against testing set 2 of 4.</span>
+<span class="pl-smi">predictions</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-smi">modFit</span>, <span class="pl-v">newdata</span><span class="pl-k">=</span><span class="pl-smi">df_small_testing2</span>)
+print(confusionMatrix(<span class="pl-smi">predictions</span>, <span class="pl-smi">df_small_testing2</span><span class="pl-k">$</span><span class="pl-smi">classe</span>), <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">4</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Run against 20 testing set</span>
+print(predict(<span class="pl-smi">modFit</span>, <span class="pl-v">newdata</span><span class="pl-k">=</span><span class="pl-smi">df_testing</span>))</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Train on training set 3 of 4 with only cross validation.</span>
+set.seed(<span class="pl-c1">666</span>)
+<span class="pl-smi">modFit</span> <span class="pl-k">&lt;-</span> train(<span class="pl-smi">df_small_training3</span><span class="pl-k">$</span><span class="pl-smi">classe</span> <span class="pl-k">~</span> ., <span class="pl-v">method</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>rf<span class="pl-pds">"</span></span>, <span class="pl-v">preProcess</span><span class="pl-k">=</span>c(<span class="pl-s"><span class="pl-pds">"</span>center<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>scale<span class="pl-pds">"</span></span>), <span class="pl-v">trControl</span><span class="pl-k">=</span>trainControl(<span class="pl-v">method</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>cv<span class="pl-pds">"</span></span>, <span class="pl-v">number</span> <span class="pl-k">=</span> <span class="pl-c1">4</span>), <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-smi">df_small_training3</span>)
+print(<span class="pl-smi">modFit</span>, <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">3</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Run against testing set 3 of 4.</span>
+<span class="pl-smi">predictions</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-smi">modFit</span>, <span class="pl-v">newdata</span><span class="pl-k">=</span><span class="pl-smi">df_small_testing3</span>)
+print(confusionMatrix(<span class="pl-smi">predictions</span>, <span class="pl-smi">df_small_testing3</span><span class="pl-k">$</span><span class="pl-smi">classe</span>), <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">4</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Run against 20 testing set</span>
+print(predict(<span class="pl-smi">modFit</span>, <span class="pl-v">newdata</span><span class="pl-k">=</span><span class="pl-smi">df_testing</span>))</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Train on training set 4 of 4 with only cross validation.</span>
+set.seed(<span class="pl-c1">666</span>)
+<span class="pl-smi">modFit</span> <span class="pl-k">&lt;-</span> train(<span class="pl-smi">df_small_training4</span><span class="pl-k">$</span><span class="pl-smi">classe</span> <span class="pl-k">~</span> ., <span class="pl-v">method</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>rf<span class="pl-pds">"</span></span>, <span class="pl-v">preProcess</span><span class="pl-k">=</span>c(<span class="pl-s"><span class="pl-pds">"</span>center<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>scale<span class="pl-pds">"</span></span>), <span class="pl-v">trControl</span><span class="pl-k">=</span>trainControl(<span class="pl-v">method</span> <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">"</span>cv<span class="pl-pds">"</span></span>, <span class="pl-v">number</span> <span class="pl-k">=</span> <span class="pl-c1">4</span>), <span class="pl-v">data</span><span class="pl-k">=</span><span class="pl-smi">df_small_training4</span>)
+print(<span class="pl-smi">modFit</span>, <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">3</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Run against testing set 4 of 4.</span>
+<span class="pl-smi">predictions</span> <span class="pl-k">&lt;-</span> predict(<span class="pl-smi">modFit</span>, <span class="pl-v">newdata</span><span class="pl-k">=</span><span class="pl-smi">df_small_testing4</span>)
+print(confusionMatrix(<span class="pl-smi">predictions</span>, <span class="pl-smi">df_small_testing4</span><span class="pl-k">$</span><span class="pl-smi">classe</span>), <span class="pl-v">digits</span><span class="pl-k">=</span><span class="pl-c1">4</span>)</pre></div>
+
+<div class="highlight highlight-r"><pre><span class="pl-c"># Run against 20 testing set provided by Professor Leek.</span>
+print(predict(<span class="pl-smi">modFit</span>, <span class="pl-v">newdata</span><span class="pl-k">=</span><span class="pl-smi">df_testing</span>))</pre></div>
+
+<h2>
+<a id="conclusion" class="anchor" href="#conclusion" aria-hidden="true"><span class="octicon octicon-link"></span></a>CONCLUSION</h2>
+
+<p>I received three separate predictions by appling the 4 models against the actual 20 item training set:</p>
+
+<p>A) Accuracy Rate 0.0286 Predictions: B A A A A E D B A A B C B A E E A B B B</p>
+
+<p>B) Accuracy Rates 0.0366 and 0.0345 Predictions: B A B A A E D B A A B C B A E E A B B B</p>
+
+<p>C) Accuracy Rate 0.0437 Predictions: B A B A A E D D A A B C B A E E A B B B</p>
+
+<p>Since Professor Leek is allowing 2 submissions for each problem, I decided to attempt with the two most likely prediction sets: option A and option B.</p>
+
+<p>Since options A and B above only differed for item 3 (A for option A, B for option B), I subimitted one value for problems 1-2 and 4-20, while I submitted two values for problem 3. For problem 3, I was expecting the automated grader to tell me which answer (A or B) was correct, but instead the grader simply told me I had a correct answer. All other answers were also correct, resulting in a score of 100%.</p>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/ajayrathi78/Practical-Machine-Learning">Practical-machine-learning</a> is maintained by <a href="https://github.com/ajayrathi78">ajayrathi78</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
